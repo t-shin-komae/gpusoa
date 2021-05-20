@@ -1,5 +1,6 @@
 cuda_add_library(gpusoa STATIC
-    ./constructor/array1d.cu
+    array.cu
+    ./constructor/array.cu
     ./constructor/vectorarray1d.cu
 )
 
