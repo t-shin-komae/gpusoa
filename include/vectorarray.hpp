@@ -1,6 +1,8 @@
 #include "macros.hpp"
 #include "vector.hpp"
 #include <functional>
+#include <thrust/pair.h>
+#include <thrust/tuple.h>
 namespace soa {
 template <int N> class KVectorArray1D {
   double *D_ptrs[N];
@@ -8,7 +10,7 @@ template <int N> class KVectorArray1D {
 
 public:
   KVectorArray1D(double *const (&D_ptrs)[N], int Nx);
-  int size() const { return Nx; }
+  DEVICE inline int size() const { return Nx; }
   DEVICE inline VectorProxy<N> operator()(int i) {
 #ifdef _ARRAY_INDEX_BOUNDS_CHECK
     assert(i < Nx);
@@ -22,6 +24,51 @@ public:
     return ConstVectorProxy<N>(D_ptrs, i);
   }
 };
+template <int N> class KVectorArray2D {
+  double *D_ptrs[N];
+  int Nx, Ny;
+
+public:
+  KVectorArray2D(double *const (&D_ptrs)[N], int Nx, int Ny);
+  DEVICE inline int sizeX() const { return Nx; }
+  DEVICE inline int sizeY() const { return Ny; }
+  DEVICE inline thrust::pair<int, int> size() const { return {Nx, Ny}; }
+  DEVICE inline VectorProxy<N> operator()(int i, int j) {
+#ifdef _ARRAY_INDEX_BOUNDS_CHECK
+    assert(i < Nx && j< Ny);
+#endif
+    return VectorProxy<N>(D_ptrs, i + j * Nx);
+  }
+  DEVICE inline ConstVectorProxy<N> operator()(int i, int j) const {
+#ifdef _ARRAY_INDEX_BOUNDS_CHECK
+    assert(i < Nx && j < Ny);
+#endif
+    return ConstVectorProxy<N>(D_ptrs, i + j * Nx);
+  }
+};
+template <int N> class KVectorArray3D {
+  double *D_ptrs[N];
+  int Nx, Ny, Nz;
+
+public:
+  KVectorArray3D(double *const (&D_ptrs)[N], int Nx, int Ny, int Nz);
+  DEVICE inline int sizeX() const { return Nx; }
+  DEVICE inline int sizeY() const { return Ny; }
+  DEVICE inline int sizeZ() const { return Nz; }
+  DEVICE inline thrust::tuple<int, int, int> size() const { return {Nx, Ny, Nz}; }
+  DEVICE inline VectorProxy<N> operator()(int i, int j, int k) {
+#ifdef _ARRAY_INDEX_BOUNDS_CHECK
+    assert(i < Nx && j < Ny && k < Nz);
+#endif
+    return VectorProxy<N>(D_ptrs, i + j * Nx + k * Nx * Ny);
+  }
+  DEVICE inline ConstVectorProxy<N> operator()(int i, int j, int k) const {
+#ifdef _ARRAY_INDEX_BOUNDS_CHECK
+    assert(i < Nx && j < Ny && k < Nz);
+#endif
+    return ConstVectorProxy<N>(D_ptrs, i + j * Nx + k * Nx * Ny);
+  }
+};
 
 template <int N> class VectorArray1D {
   double *H_ptrs[N], *D_ptrs[N];
@@ -33,10 +80,11 @@ public:
   ~VectorArray1D();
   VectorArray1D &operator=(const VectorArray1D &) = delete;
   VectorArray1D(const VectorArray1D &) = delete;
-  VectorArray1D(VectorArray1D &&);
-  VectorArray1D &operator=(VectorArray1D &&);
+  VectorArray1D(VectorArray1D &&) noexcept;
+  VectorArray1D &operator=(VectorArray1D &&) noexcept;
   void DeviceToHost();
   void HostToDevice();
+  inline KVectorArray1D<N> gpu() const { return {D_ptrs, Nx}; }
   inline int size() const { return Nx; }
 
   inline VectorProxy<N> operator()(int i) {
@@ -53,31 +101,69 @@ public:
   }
 };
 
-template <int N> class DVectorArray2D {
-  double *q[N];
-  int Nx;
+template <int N> class VectorArray2D {
+  double *H_ptrs[N], *D_ptrs[N];
+  int Nx, Ny;
 
 public:
-  DVectorArray2D(int Nx);
-  ~DVectorArray2D();
-  DVectorArray2D &operator=(const DVectorArray2D &);
-  DVectorArray2D(const DVectorArray2D &);
-  DVectorArray2D(DVectorArray2D &&);
-  DVectorArray2D &operator=(DVectorArray2D &&);
+  VectorArray2D(int Nx, int Ny);
+  VectorArray2D(int Nx, int Ny, std::function<Vector<N>(int, int)> f);
+  ~VectorArray2D();
+  VectorArray2D &operator=(const VectorArray2D &) = delete;
+  VectorArray2D(const VectorArray2D &) = delete;
+  VectorArray2D(VectorArray2D &&) noexcept;
+  VectorArray2D &operator=(VectorArray2D &&) noexcept;
+  void DeviceToHost();
+  void HostToDevice();
+  inline KVectorArray2D<N> gpu() const { return {D_ptrs, Nx, Ny}; }
+  inline int sizeX() const { return Nx; }
+  inline int sizeY() const { return Ny; }
+  inline std::pair<int, int> size() const { return {Nx, Ny}; }
 
-  DEVICE
   inline VectorProxy<N> operator()(int i, int j) {
 #ifdef _ARRAY_INDEX_BOUNDS_CHECK
     assert(i < Nx && j < Ny);
 #endif
-    return VectorProxy<N>(q, i + j * Nx);
+    return VectorProxy<N>(H_ptrs, i + j * Nx);
   }
-  DEVICE
   inline ConstVectorProxy<N> operator()(int i, int j) const {
 #ifdef _ARRAY_INDEX_BOUNDS_CHECK
     assert(i < Nx && j < Ny);
 #endif
-    return ConstVectorProxy<N>(q, i + j * Nx);
+    return ConstVectorProxy<N>(H_ptrs, i + j * Nx);
+  }
+};
+template <int N> class VectorArray3D {
+  double *H_ptrs[N], *D_ptrs[N];
+  int Nx, Ny, Nz;
+
+public:
+  VectorArray3D(int Nx, int Ny, int Nz);
+  VectorArray3D(int Nx, int Ny, int Nz, std::function<Vector<N>(int, int, int)> f);
+  ~VectorArray3D();
+  VectorArray3D &operator=(const VectorArray3D &) = delete;
+  VectorArray3D(const VectorArray3D &) = delete;
+  VectorArray3D(VectorArray3D &&) noexcept;
+  VectorArray3D &operator=(VectorArray3D &&) noexcept;
+  void DeviceToHost();
+  void HostToDevice();
+  inline KVectorArray3D<N> gpu() const { return {D_ptrs, Nx, Ny, Nz}; }
+  inline int sizeX() const { return Nx; }
+  inline int sizeY() const { return Ny; }
+  inline int sizeZ() const { return Nz; }
+  inline std::tuple<int, int, int> size() const { return {Nx, Ny, Nz}; }
+
+  inline VectorProxy<N> operator()(int i, int j, int k) {
+#ifdef _ARRAY_INDEX_BOUNDS_CHECK
+    assert(i < Nx && j < Ny && k < Nz);
+#endif
+    return VectorProxy<N>(H_ptrs, i + j * Nx + k * Nx * Ny);
+  }
+  inline ConstVectorProxy<N> operator()(int i, int j, int k) const {
+#ifdef _ARRAY_INDEX_BOUNDS_CHECK
+    assert(i < Nx && j < Ny && k < Nz);
+#endif
+    return ConstVectorProxy<N>(H_ptrs, i + j * Nx + k * Nx * Ny);
   }
 };
 

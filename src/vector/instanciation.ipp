@@ -1,32 +1,4 @@
-#include "cuda_utils.hpp"
-#include "vectorarray.hpp"
-namespace soa {
-
-template <int N> VectorArray1D<N>::VectorArray1D(int Nx) : Nx(Nx) {
-  double *H_ptr, *D_ptr;
-  std::cout << "cudaMalloc\n" << std::endl;
-  check(cudaMallocHost(&H_ptr, sizeof(double) * Nx * N));
-  check(cudaMalloc(&D_ptr, sizeof(double) * Nx * N));
-  for (int i = 0; i < N; i++) {
-    H_ptrs[i] = H_ptr + Nx * i;
-    D_ptrs[i] = D_ptr + Nx * i;
-  }
-}
-template <int N>
-VectorArray1D<N>::VectorArray1D(int Nx, std::function<Vector<N>(int)> f)
-    : Nx(Nx) {
-  for (int i = 0; i < Nx; i++)
-    this->operator()(i) = f(i);
-
-  check(cudaMemcpy(D_ptrs[0], H_ptrs[0], sizeof(double) * Nx * N,
-                   cudaMemcpyHostToDevice));
-}
-template <int N> VectorArray1D<N>::~VectorArray1D() {
-  std::cout << "cudaFree\n" << std::endl;
-  check(cudaFreeHost(H_ptrs[0]));
-  check(cudaFree(D_ptrs[0]));
-}
-
+namespace soa{
 template class VectorArray1D<3>;
 template class VectorArray1D<4>;
 template class VectorArray1D<5>;
@@ -124,4 +96,4 @@ template class VectorArray1D<96>;
 template class VectorArray1D<97>;
 template class VectorArray1D<98>;
 template class VectorArray1D<99>;
-} // namespace soa
+}

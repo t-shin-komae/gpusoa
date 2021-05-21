@@ -1,7 +1,6 @@
 cuda_add_library(gpusoa STATIC
     array.cu
-    ./constructor/array.cu
-    ./constructor/vectorarray1d.cu
+    vector/array.cu
 )
 
 target_include_directories(gpusoa
