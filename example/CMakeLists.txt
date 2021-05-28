@@ -1,0 +1,2 @@
+cuda_add_executable(gaussian_image gaussian_image.cu)
+target_link_libraries(gaussian_image gpusoa)

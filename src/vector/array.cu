@@ -24,7 +24,6 @@ KVectorArray3D<N>::KVectorArray3D(double *const (&D_ptrs)[N], int Nx, int Ny, in
 
 template <int N> VectorArray1D<N>::VectorArray1D(int Nx) : Nx(Nx) {
   double *H_ptr, *D_ptr;
-  std::cout << "cudaMalloc\n" << std::endl;
   check(cudaMallocHost(&H_ptr, sizeof(double) * Nx * N));
   check(cudaMalloc(&D_ptr, sizeof(double) * Nx * N));
   for (int i = 0; i < N; i++) {
@@ -42,7 +41,6 @@ VectorArray1D<N>::VectorArray1D(int Nx, std::function<Vector<N>(int)> f)
                    cudaMemcpyHostToDevice));
 }
 template <int N> VectorArray1D<N>::~VectorArray1D() {
-  std::cout << "cudaFree\n" << std::endl;
   check(cudaFreeHost(H_ptrs[0]));
   check(cudaFree(D_ptrs[0]));
 }
@@ -71,7 +69,6 @@ VectorArray1D<N> &VectorArray1D<N>::operator=(VectorArray1D<N> &&rhs) noexcept {
 // ================ VectorArray2D Construction and move assignment ========================
 template <int N> VectorArray2D<N>::VectorArray2D(int Nx, int Ny) : Nx(Nx) ,Ny(Ny){
   double *H_ptr, *D_ptr;
-  std::cout << "cudaMalloc\n" << std::endl;
   check(cudaMallocHost(&H_ptr, sizeof(double) * Nx * Ny * N));
   check(cudaMalloc(&D_ptr, sizeof(double) * Nx * Ny * N));
   for (int i = 0; i < N; i++) {
@@ -91,7 +88,6 @@ VectorArray2D<N>::VectorArray2D(int Nx, int Ny,
                    cudaMemcpyHostToDevice));
 }
 template <int N> VectorArray2D<N>::~VectorArray2D() {
-  std::cout << "cudaFree\n" << std::endl;
   check(cudaFreeHost(H_ptrs[0]));
   check(cudaFree(D_ptrs[0]));
 }
@@ -122,7 +118,6 @@ VectorArray2D<N> &VectorArray2D<N>::operator=(VectorArray2D<N> &&rhs) noexcept {
 // ================ VectorArray3D Construction and move assignment ========================
 template <int N> VectorArray3D<N>::VectorArray3D(int Nx, int Ny, int Nz) : Nx(Nx) ,Ny(Ny), Nz(Nz){
   double *H_ptr, *D_ptr;
-  std::cout << "cudaMalloc\n" << std::endl;
   check(cudaMallocHost(&H_ptr, sizeof(double) * Nx * Ny * Nz * N));
   check(cudaMalloc(&D_ptr, sizeof(double) * Nx * Ny * Nz * N));
   for (int i = 0; i < N; i++) {
@@ -143,7 +138,6 @@ VectorArray3D<N>::VectorArray3D(int Nx, int Ny, int Nz,
                    cudaMemcpyHostToDevice));
 }
 template <int N> VectorArray3D<N>::~VectorArray3D() {
-  std::cout << "cudaFree\n" << std::endl;
   check(cudaFreeHost(H_ptrs[0]));
   check(cudaFree(D_ptrs[0]));
 }
@@ -182,6 +176,23 @@ template <int N> void VectorArray1D<N>::HostToDevice() {
                    cudaMemcpyHostToDevice));
 }
 
+template <int N> void VectorArray2D<N>::DeviceToHost() {
+  check(cudaMemcpy(H_ptrs[0], D_ptrs[0], sizeof(double) * Nx * Ny * N,
+                   cudaMemcpyDeviceToHost));
+}
+template <int N> void VectorArray2D<N>::HostToDevice() {
+  check(cudaMemcpy(D_ptrs[0], H_ptrs[0], sizeof(double) * Nx * Ny * N,
+                   cudaMemcpyHostToDevice));
+}
+
+template <int N> void VectorArray3D<N>::DeviceToHost() {
+  check(cudaMemcpy(H_ptrs[0], D_ptrs[0], sizeof(double) * Nx * Ny * Nz * N,
+                   cudaMemcpyDeviceToHost));
+}
+template <int N> void VectorArray3D<N>::HostToDevice() {
+  check(cudaMemcpy(D_ptrs[0], H_ptrs[0], sizeof(double) * Nx * Ny * Nz * N,
+                   cudaMemcpyHostToDevice));
+}
 } // namespace soa
 
 #include "instanciation.ipp"
